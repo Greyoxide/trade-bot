@@ -45,4 +45,18 @@ chmod 0644 /etc/cron.d/trade_bot
 touch /app/log/cron.log /app/log/trade_bot.log
 tail -F /app/log/cron.log /app/log/trade_bot.log &
 
+# Minimal health-check server so platforms like Railway don't wait for a port
+PORT="${PORT:-3000}"
+ruby -e "
+  require 'socket'
+  server = TCPServer.new($PORT)
+  loop do
+    client = server.accept
+    client.print \"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK\"
+    client.close
+  end
+" &
+
+echo "Health check listening on port ${PORT}"
+
 exec cron -f
