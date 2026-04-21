@@ -2,4 +2,4 @@
 
 require_relative "lib/bot"
 
-Bot::Runner.new.run
+Bot::Runner.new.run_loop
