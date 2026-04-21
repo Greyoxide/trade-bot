@@ -36,7 +36,11 @@ module Bot
       Bot::Log.info("Bot started for #{@symbol} — cycle: #{cycle_description}")
 
       loop do
-        run
+        begin
+          run
+        rescue => e
+          Bot::Log.error("#{e.class}: #{e.message}")
+        end
         Bot::Log.info("Next run in #{cycle_description}")
         sleep @cycle
       end

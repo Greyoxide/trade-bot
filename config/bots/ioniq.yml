@@ -1,5 +1,5 @@
 bot:
-  symbol: ioniq
+  symbol: ionq
   cycle: 30m # accepted formats: 4h, 30m, 1d, daily, hourly
   color: cyan # red, green, yellow, blue, magenta, cyan, white
 
