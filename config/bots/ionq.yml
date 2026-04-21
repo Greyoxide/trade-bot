@@ -1,0 +1,9 @@
+bot:
+  symbol: ionq
+  cycle: 30m
+  color: cyan
+
+  instructions: |
+    Target 10-15% gain before selling. Cut losses if position drops more than 5%.
+    Look for oversold conditions and momentum shifts as entry points.
+    Do not overtrade — if conditions are unclear, hold or wait.

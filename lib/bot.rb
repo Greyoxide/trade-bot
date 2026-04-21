@@ -9,8 +9,8 @@ module Bot
   class Runner
     def initialize(config_path)
       config       = YAML.load_file(config_path, symbolize_names: true).fetch(:bot)
-      @symbol      = config.fetch(:symbol).upcase
-      @system_msg  = config.fetch(:instructions)
+      @symbol       = config.fetch(:symbol).upcase
+      @instructions = config.fetch(:instructions)
       @cycle       = parse_cycle(config[:cycle])
 
       Bot::Log.setup(symbol: @symbol, color: config[:color])
@@ -73,7 +73,7 @@ module Bot
         parameters: {
           model:    "gpt-4o",
           messages: [
-            { role: "system", content: @system_msg },
+            { role: "system", content: system_prompt },
             *@messages
           ],
           response_format: { type: "json_object" }
@@ -86,6 +86,34 @@ module Bot
       decision = JSON.parse(content)
       Bot::Log.info("LLM: action=#{decision['action']} rationale=#{decision['rationale']}")
       decision
+    end
+
+    def system_prompt
+      <<~PROMPT
+        #{@instructions.strip}
+
+        ---
+
+        Each cycle you will receive a JSON object with:
+          - symbol: the ticker you are managing
+          - latest_price: current market price
+          - buying_power: available cash in the account
+          - equity: total account value
+          - position: current open position (null if none), including qty and avg_entry_price
+          - price_history: array of recent daily OHLCV bars (open, high, low, close, volume)
+
+        Respond with a JSON object containing:
+          - action: (required) "buy", "sell", or "hold"
+          - rationale: (required) one sentence explaining your reasoning
+
+        If action is "buy", include one of:
+          - amount_usd: dollar amount to spend
+          - shares: number of shares to buy
+
+        If action is "sell", include one of:
+          - close_position: true — close the entire position
+          - shares: number of shares to sell
+      PROMPT
     end
 
     def parse_cycle(value)
