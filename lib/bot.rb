@@ -7,11 +7,13 @@ require_relative "bot/logger"
 
 module Bot
   class Runner
-    def initialize(config_path = File.expand_path("../../config/bot.yml", __FILE__))
+    def initialize(config_path)
       config       = YAML.load_file(config_path, symbolize_names: true).fetch(:bot)
       @symbol      = config.fetch(:symbol).upcase
       @system_msg  = config.fetch(:instructions)
       @cycle       = parse_cycle(config[:cycle])
+
+      Bot::Log.setup(symbol: @symbol, color: config[:color])
 
       @market      = Alpaca::Market.new
       @account     = Alpaca::Account.new

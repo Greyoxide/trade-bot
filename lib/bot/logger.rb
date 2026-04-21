@@ -5,20 +5,39 @@ require "fileutils"
 
 module Bot
   module Log
-    LOG_DIR  = File.expand_path("../../log", __dir__)
-    LOG_FILE = File.join(LOG_DIR, "trade_bot.log").freeze
+    COLORS = {
+      "red"     => "\e[31m",
+      "green"   => "\e[32m",
+      "yellow"  => "\e[33m",
+      "blue"    => "\e[34m",
+      "magenta" => "\e[35m",
+      "cyan"    => "\e[36m",
+      "white"   => "\e[37m"
+    }.freeze
+    RESET = "\e[0m".freeze
 
-    def self.setup
+    LOG_DIR = File.expand_path("../../log", __dir__)
+
+    def self.setup(symbol: nil, color: nil)
       FileUtils.mkdir_p(LOG_DIR)
 
-      file_logger   = ::Logger.new(LOG_FILE, "daily")
+      log_file = symbol ? File.join(LOG_DIR, "#{symbol.downcase}.log") : File.join(LOG_DIR, "trade_bot.log")
+
+      file_logger   = ::Logger.new(log_file, "daily")
       stdout_logger = ::Logger.new($stdout)
 
-      [file_logger, stdout_logger].each do |l|
-        l.formatter = proc do |severity, datetime, _progname, msg|
-          "[#{datetime.strftime('%Y-%m-%d %H:%M:%S')}] #{severity}: #{msg}\n"
-        end
-      end
+      plain_fmt = proc { |severity, datetime, _progname, msg|
+        "[#{datetime.strftime('%Y-%m-%d %H:%M:%S')}] #{severity}: #{msg}\n"
+      }
+
+      color_code = COLORS[color.to_s.downcase]
+      color_fmt  = proc { |severity, datetime, _progname, msg|
+        line = "[#{datetime.strftime('%Y-%m-%d %H:%M:%S')}] #{severity}: #{msg}\n"
+        color_code ? "#{color_code}#{line}#{RESET}" : line
+      }
+
+      file_logger.formatter   = plain_fmt
+      stdout_logger.formatter = color_fmt
 
       @logger = MultiLogger.new(file_logger, stdout_logger)
     end
@@ -33,8 +52,7 @@ module Bot
     def self.debug(msg) = logger.debug(msg)
 
     def self.trade(action, symbol, detail)
-      msg = "[TRADE] #{action.upcase} #{symbol.upcase} — #{detail}"
-      info(msg)
+      info("[TRADE] #{action.upcase} #{symbol.upcase} — #{detail}")
     end
 
     class MultiLogger
