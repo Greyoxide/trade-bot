@@ -27,7 +27,6 @@ module Bot
       context  = gather_context
       decision = ask_llm(context)
 
-      Bot::Log.info("LLM decision: #{decision.inspect}")
       execute(decision)
     end
 
@@ -60,6 +59,8 @@ module Bot
     end
 
     def ask_llm(context)
+      Bot::Log.info("Context: price=#{context[:latest_price]} buying_power=#{context[:buying_power]} position=#{context[:position] ? context[:position]['qty'] + ' shares @ ' + context[:position]['avg_entry_price'] : 'none'}")
+
       @messages << { role: "user", content: context.to_json }
 
       response = @llm.chat(
@@ -76,7 +77,9 @@ module Bot
       content = response.dig("choices", 0, "message", "content")
       @messages << { role: "assistant", content: content }
 
-      JSON.parse(content)
+      decision = JSON.parse(content)
+      Bot::Log.info("LLM: action=#{decision['action']} rationale=#{decision['rationale']}")
+      decision
     end
 
     def parse_cycle(value)
