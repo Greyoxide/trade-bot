@@ -1,0 +1,8 @@
+services:
+  trade_bot:
+    build: .
+    restart: always
+    env_file: .rbenv-vars
+    volumes:
+      - ./log:/app/log        # persist logs on the host
+      - ./config:/app/config  # live-edit bot.yml without rebuilding
