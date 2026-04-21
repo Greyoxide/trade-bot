@@ -8,19 +8,19 @@ require_relative "bot/logger"
 module Bot
   class Runner
     def initialize(config_path)
-      config       = YAML.load_file(config_path, symbolize_names: true).fetch(:bot)
+      config        = YAML.load_file(config_path, symbolize_names: true).fetch(:bot)
       @symbol       = config.fetch(:symbol).upcase
       @instructions = config.fetch(:instructions)
-      @cycle       = parse_cycle(config[:cycle])
+      @cycle        = parse_cycle(config[:cycle])
 
       Bot::Log.setup(symbol: @symbol, color: config[:color])
 
-      @market      = Alpaca::Market.new
-      @account     = Alpaca::Account.new
-      @orders      = Alpaca::Orders.new
+      @market   = Alpaca::Market.new
+      @account  = Alpaca::Account.new
+      @orders   = Alpaca::Orders.new
 
-      @llm         = OpenAI::Client.new(access_token: ENV.fetch("OPENAI_API_KEY"))
-      @messages    = []
+      @llm      = OpenAI::Client.new(access_token: ENV.fetch("OPENAI_API_KEY"))
+      @messages = []
     end
 
     def run
@@ -54,18 +54,34 @@ module Bot
       price    = @market.latest_price(@symbol)
       account  = @account.info
 
-      {
-        symbol:        @symbol,
-        latest_price:  price,
-        buying_power:  account["buying_power"].to_f,
-        equity:        account["equity"].to_f,
-        position:      position,
+      context = {
+        symbol:       @symbol,
+        latest_price: price,
+        buying_power: account["buying_power"].to_f,
+        equity:       account["equity"].to_f,
+        position:     nil,
         price_history: history.last(30)
       }
+
+      if position
+        entry    = position["avg_entry_price"].to_f
+        plpc     = price && entry > 0 ? ((price - entry) / entry * 100).round(2) : nil
+        context[:position] = {
+          qty:             position["qty"],
+          avg_entry_price: entry,
+          current_price:   price,
+          unrealized_pl_pct: plpc,
+          market_value:    position["market_value"].to_f
+        }
+      end
+
+      context
     end
 
     def ask_llm(context)
-      Bot::Log.info("Context: price=#{context[:latest_price]} buying_power=#{context[:buying_power]} position=#{context[:position] ? context[:position]['qty'] + ' shares @ ' + context[:position]['avg_entry_price'] : 'none'}")
+      pos = context[:position]
+      pos_summary = pos ? "#{pos[:qty]} shares @ #{pos[:avg_entry_price]} (#{pos[:unrealized_pl_pct]}% P&L)" : "none"
+      Bot::Log.info("Context: price=#{context[:latest_price]} buying_power=#{context[:buying_power]} position=#{pos_summary}")
 
       @messages << { role: "user", content: context.to_json }
 
@@ -99,8 +115,14 @@ module Bot
           - latest_price: current market price
           - buying_power: available cash in the account
           - equity: total account value
-          - position: current open position (null if none), including qty and avg_entry_price
-          - price_history: array of recent daily OHLCV bars (open, high, low, close, volume)
+          - position: current open position (null if none), with fields:
+              qty, avg_entry_price, current_price, unrealized_pl_pct (%), market_value
+          - price_history: array of recent daily OHLCV bars (time, open, high, low, close, volume)
+
+        Important rules:
+          - NEVER sell a position unless unrealized_pl_pct meets your take-profit or stop-loss threshold.
+          - If position is present and unrealized_pl_pct is between your stop-loss and take-profit, hold.
+          - Do not react to noise — only act on a clear signal.
 
         Respond with a JSON object containing:
           - action: (required) "buy", "sell", or "hold"
