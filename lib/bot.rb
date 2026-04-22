@@ -25,11 +25,8 @@ module Bot
 
     def run
       Bot::Log.info("Running cycle for #{@symbol}")
-
-      context  = gather_context
-      decision = ask_llm(context)
-
-      execute(decision)
+      context = gather_context
+      execute(ask_llm(context))
     end
 
     def run_loop
@@ -55,23 +52,23 @@ module Bot
       account  = @account.info
 
       context = {
-        symbol:       @symbol,
-        latest_price: price,
-        buying_power: account["buying_power"].to_f,
-        equity:       account["equity"].to_f,
-        position:     nil,
+        symbol:        @symbol,
+        latest_price:  price,
+        buying_power:  account["buying_power"].to_f,
+        equity:        account["equity"].to_f,
+        position:      nil,
         price_history: history.last(30)
       }
 
       if position
-        entry    = position["avg_entry_price"].to_f
-        plpc     = price && entry > 0 ? ((price - entry) / entry * 100).round(2) : nil
+        entry  = position["avg_entry_price"].to_f
+        plpc   = price && entry > 0 ? ((price - entry) / entry * 100).round(2) : nil
         context[:position] = {
-          qty:             position["qty"],
-          avg_entry_price: entry,
-          current_price:   price,
+          qty:               position["qty"],
+          avg_entry_price:   entry,
+          current_price:     price,
           unrealized_pl_pct: plpc,
-          market_value:    position["market_value"].to_f
+          market_value:      position["market_value"].to_f
         }
       end
 
@@ -79,7 +76,7 @@ module Bot
     end
 
     def ask_llm(context)
-      pos = context[:position]
+      pos         = context[:position]
       pos_summary = pos ? "#{pos[:qty]} shares @ #{pos[:avg_entry_price]} (#{pos[:unrealized_pl_pct]}% P&L)" : "none"
       Bot::Log.info("Context: price=#{context[:latest_price]} buying_power=#{context[:buying_power]} position=#{pos_summary}")
 
@@ -118,11 +115,6 @@ module Bot
           - position: current open position (null if none), with fields:
               qty, avg_entry_price, current_price, unrealized_pl_pct (%), market_value
           - price_history: array of recent daily OHLCV bars (time, open, high, low, close, volume)
-
-        Important rules:
-          - NEVER sell a position unless unrealized_pl_pct meets your take-profit or stop-loss threshold.
-          - If position is present and unrealized_pl_pct is between your stop-loss and take-profit, hold.
-          - Do not react to noise — only act on a clear signal.
 
         Respond with a JSON object containing:
           - action: (required) "buy", "sell", or "hold"

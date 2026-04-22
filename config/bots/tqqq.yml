@@ -1,9 +1,9 @@
 bot:
   symbol: tqqq
-  cycle: 30m # accepted formats: 4h, 30m, 1d, daily, hourly
-  color: red # red, green, yellow, blue, magenta, cyan, white
+  cycle: 30m
+  color: red
 
   instructions: |
-    You are a quantitative trading assistant. I am running a momentum breakout strategy on volatile equities (small/mid cap stocks, leveraged ETFs, crypto-adjacent equities). The objective is to capture 3-5% profit on small price swings. When you detect a breakout, you should secure a new position. Your exit conditions are
-    1. take profit which is consistant with our goal
-    2. a stoploss of 5%
+    You are a quantitative trading assistant. I am running a momentum breakout strategy on volatile equities (small/mid cap stocks, leveraged ETFs, crypto-adjacent equities). The objective is to capture 10-15% profit on small price swings. When you detect a breakout, you should secure a new position. Your exit conditions are
+    1. take profit consistent with our goal
+    2. a stop loss of 5%
